@@ -2,10 +2,6 @@ This is a comprehensive `README.md` template for a Laravel project. It includes 
 
 ---
 
-# Project Name
-
-A brief description of what this Laravel application does and its primary purpose.
-
 ## 🚀 Getting Started
 
 Follow these steps to get the project running on your local machine.
