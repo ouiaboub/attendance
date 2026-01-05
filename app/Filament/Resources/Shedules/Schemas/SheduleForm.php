@@ -4,82 +4,96 @@ namespace App\Filament\Resources\Shedules\Schemas;
 
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Tabs;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TimePicker;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
+use Closure;
 
 class SheduleForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Section::make('Schedule Information')
+        return $schema->components([
+            Section::make('Global Info')
+                ->schema([
+                    Select::make('filiere_id')
+                        ->relationship('filiere', 'name')
+                        ->required()
+                        ->preload()
+                        ->live(),
+                    Select::make('year')
+                        ->label('Semester')
+                        ->options(['1' => '1', '2' => '2', '3' => '3', '4' => '4'])
+                        ->required(),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
+
+            Tabs::make('Weekly Schedule')
+                ->tabs([
+                    static::createDayTab('Monday'),
+                    static::createDayTab('Tuesday'),
+                    static::createDayTab('Wednesday'),
+                    static::createDayTab('Thursday'),
+                    static::createDayTab('Friday'),
+                    static::createDayTab('Saturday'),
+                ])->columnSpanFull()
+        ]);
+    }
+
+    protected static function createDayTab(string $day): Tabs\Tab
+    {
+        return Tabs\Tab::make($day)
+            ->schema([
+                Repeater::make("items_{$day}")
+                    ->label("Courses for $day")
                     ->schema([
-                        Select::make('filiere_id')
-                            ->label('Program/Filiere')
-                            ->relationship('filiere', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->afterStateUpdated(fn(Set $set) => $set('year', null)),
-
-                        Select::make('year')
-                            ->label('Year')
-                            ->options([
-                                '1' => 'Year 1',
-                                '2' => 'Year 2',
-                                '3' => 'Year 3',
-                                '4' => 'Year 4',
-                            ])
-                            ->required()
-                            ->native(false),
-
                         Select::make('cours_id')
-                            ->label('Course')
                             ->relationship('cours', 'name')
                             ->required()
-                            ->searchable()
-                            ->preload(),
-
-                    ])
-
-                    ->collapsible()
-                    ->columnSpanFull()
-                    ->columns(3),
-
-                Section::make('Time & Location')
-                    ->schema([
-                        Select::make('day_of_week')
-                            ->options([
-                                'Monday' => 'Monday',
-                                'Tuesday' => 'Tuesday',
-                                'Wednesday' => 'Wednesday',
-                                'Thursday' => 'Thursday',
-                                'Friday' => 'Friday',
-                                'Saturday' => 'Saturday',
-                            ])
-                            ->required()
-                            ->native(false),
-
+                            ->preload()
+                            ->searchable(),
+                        TextInput::make('room'),
                         TimePicker::make('start_time')
                             ->required()
                             ->seconds(false)
-                            ->live(),
-
+                            ->live(), // Crucial for real-time validation
                         TimePicker::make('end_time')
                             ->required()
                             ->seconds(false)
-                            ->after('start_time'),
-
-                        TextInput::make('room')
-                            ->placeholder('e.g., Room 101, Lab A'),
+                            ->after('start_time')
+                            ->live(), // Crucial for real-time validation
                     ])
-                    ->columnSpanFull()
-                    ->columns(4),
+                    ->columns(2)
+                    ->itemLabel(fn($state) => ($state['start_time'] ?? 'New') . ' Slot')
+                    ->collapsible()
+                    
+                    ->rules([
+                        fn () => function (string $attribute, $value, Closure $fail) use ($day) {
+                            if (!is_array($value)) return;
+
+                            // Sort items by start time to make comparison easier
+                            $items = collect($value)->sortBy('start_time')->values()->all();
+
+                            for ($i = 0; $i < count($items) - 1; $i++) {
+                                $current = $items[$i];
+                                $next = $items[$i + 1];
+
+                                if (empty($current['start_time']) || empty($current['end_time']) || 
+                                    empty($next['start_time']) || empty($next['end_time'])) {
+                                    continue;
+                                }
+
+                                // If the start of the next course is earlier than the end of the current one
+                                if ($next['start_time'] < $current['end_time']) {
+                                    $fail("Overlap detected on {$day}: A course starting at {$next['start_time']} conflicts with the course ending at {$current['end_time']}.");
+                                }
+                            }
+                        },
+                    ])
             ]);
     }
 }

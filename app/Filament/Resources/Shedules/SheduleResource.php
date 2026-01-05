@@ -10,10 +10,11 @@ use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use App\Filament\Resources\Shedules\Pages\EditShedule;
 use App\Filament\Resources\Shedules\Pages\ListShedules;
+use App\Filament\Resources\Shedules\Pages\ViewSchedule;
 use App\Filament\Resources\Shedules\Pages\CreateShedule;
 use App\Filament\Resources\Shedules\Schemas\SheduleForm;
 use App\Filament\Resources\Shedules\Tables\ShedulesTable;
-use App\Filament\Resources\SheduleResource\Pages\CalendarSchedules;
+use Filament\Schemas\Components\View;
 
 class SheduleResource extends Resource
 {
@@ -22,6 +23,8 @@ class SheduleResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
 
     protected static string|BackedEnum|null $activeNavigationIcon = Heroicon::Calendar;
+
+    protected static ?string $slug = 'schedules';
 
     protected static ?string $recordTitleAttribute = 'filiere_id';
     
@@ -54,7 +57,7 @@ class SheduleResource extends Resource
             'index' => ListShedules::route('/'),
             'create' => CreateShedule::route('/create'),
             'edit' => EditShedule::route('/{record}/edit'),
-            'calendar' => CalendarSchedules::route('/calendar'),
+            'view' => ViewSchedule::route('/{record}'),
         ];
     }
 }
